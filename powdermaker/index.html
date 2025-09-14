@@ -69,6 +69,7 @@
         </div>
         <div id="canvas-control">
             <input type="file" id="upload" accept="image/*" style="display: none;">
+            <button id="dl">Download</button>
             <div class="shadow">
                 <div class="flex">
                     <p>Shadow:</p>
@@ -288,6 +289,9 @@
             a.download = "out.png";
             a.click();
         }
+        document.getElementById("dl", () => {
+            exportPng();
+        });
     </script>
 </body>
 
