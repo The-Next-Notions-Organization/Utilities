@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Powder Maker</title>
+    <link rel="icon" href="favicon.ico">
+    <style>
+        * {
+            margin: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+            width: 100%;
+        }
+
+        #container {
+            height: 100%;
+            width: 100%;
+        }
+
+        #canvas-container {
+            height: calc(100% - 50px);
+            width: 100%;
+        }
+
+        #cvs {
+            height: 100%;
+            width: 100%;
+        }
+
+        #canvas-control {
+            height: 50px;
+            width: 100%;
+            display: flex;
+        }
+
+        #colors {
+            height: 100%;
+            display: flex;
+        }
+
+        .group {
+            height: 100%;
+            margin-right: 20px;
+        }
+
+        .shadow {
+            margin-right: 20px;
+        }
+
+        .flex {
+            display: flex;
+        }
+
+        input {
+            height: 18px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <img id="source" src="powder.webp" style="display: none;">
+        <div id="canvas-container">
+            <canvas id="cvs"></canvas>
+            <canvas id="offCvs" style="display: none;"></canvas>
+        </div>
+        <div id="canvas-control">
+            <input type="file" id="upload" accept="image/*" style="display: none;">
+            <div class="shadow">
+                <div class="flex">
+                    <p>Shadow:</p>
+                    <input id="shadow" value="100" type="range" min="0" max="255" />
+                    <p id="shadowV">100</p>
+                </div>
+                <div class="flex">
+                    <p>ShadowMulti:</p>
+                    <input id="shadowMulti" value="1" type="range" min="0" max="10" />
+                    <p id="shadowM">1</p>
+                </div>
+            </div>
+            <div id="colors"></div>
+        </div>
+    </div>
+    <script>
+        const types = {
+            "powder": {
+                groups: {
+                    "edge": [
+                        [[7, 8], 2],
+                        [[6, 8, 9], 3],
+                        [[6, 10], 4],
+                        [[5, 10], 5],
+                        [[4, 9, 10, 11], 6],
+                        [[3, 4, 8, 9, 11], 7],
+                        [[2, 3, 5, 6, 12, 13], 8],
+                        [[1, 13, 14], 9],
+                        [[2, 3, 9, 10, 11, 12], 10],
+                        [[4, 5, 6, 7, 8], 11],
+                        [[10, 11], 12],
+                        [[9], 13]
+                    ],
+                    "content": [
+                        [[7], 3],
+                        [[7, 8, 9], 4],
+                        [[6, 7, 8, 9], 5],
+                        [[5, 6, 7, 8], 6],
+                        [[5, 6, 7, 10], 7],
+                        [[4, 7, 8, 9, 10, 11], 8],
+                        [[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], 9],
+                        [[4, 5, 6, 7, 8], 10],
+                        [[14], 11],
+                        [[2], 12],
+                        [[10, 11], 13]
+                    ]
+                }
+            }
+        }
+
+        let type;
+        let groupColor = {};
+        let groupAlpha = {};
+        changeType("powder");
+
+        const canvas = document.getElementById("cvs");
+        const context = canvas.getContext("2d", {
+            willReadFrequently: true
+        });
+        const source = document.getElementById("source");
+        let img = new Image();
+
+        context.imageSmoothingEnabled = false;
+
+        document.getElementById("upload").addEventListener("change", ev0 => {
+            const file = ev0.target.files[0];
+            if (!file) return;
+            const fileReader = new FileReader();
+            fileReader.addEventListener("load", ev1 => {
+                img = new Image();
+                img.addEventListener("load", ev2 => {
+                    context.drawImage(img, 0, 0);
+                });
+            });
+        });
+        let displayHeight;
+        let displayWidth;
+        let drawWidth, drawHeight;
+        source.addEventListener("load", ev => {
+            function draw() {
+                const dpr = window.devicePixelRatio || 1;
+                displayWidth = canvas.clientWidth;
+                displayHeight = canvas.clientHeight;
+
+                canvas.width = displayWidth * dpr;
+                canvas.height = displayHeight * dpr;
+
+                context.setTransform(dpr, 0, 0, dpr, 0, 0);
+                context.imageSmoothingEnabled = false;
+
+                const imgRatio = source.width / source.height;
+                const canvasRatio = displayWidth / displayHeight;
+
+                if (imgRatio > canvasRatio) {
+                    drawWidth = displayWidth;
+                    drawHeight = displayWidth / imgRatio;
+                } else {
+                    drawHeight = displayHeight;
+                    drawWidth = displayHeight * imgRatio;
+                }
+
+                const scaleX = Math.floor(drawWidth / source.width);
+                const scaleY = Math.floor(drawHeight / source.height);
+                const scale = Math.max(1, Math.min(scaleX, scaleY));
+
+                drawWidth = source.width * scale;
+                drawHeight = source.height * scale;
+
+                console.log(scale)
+
+                context.clearRect(0, 0, displayWidth, displayHeight);
+                context.drawImage(
+                    source,
+                    (displayWidth - drawWidth) / 2,
+                    (displayHeight - drawHeight) / 2,
+                    drawWidth,
+                    drawHeight
+                );
+                addColor();
+            }
+            draw();
+            window.addEventListener("resize", draw);
+        });
+        function changeType(name) {
+            type = types[name];
+            groupColor = {};
+            document.getElementById("colors").childNodes.forEach(e => e.remove());
+            for (const groupName in type.groups) {
+                groupColor[groupName] = "#FFFFFF";
+                let group = document.createElement("div");
+                group.classList.add("group");
+
+                let name = document.createElement("p");
+                name.textContent = groupName + ":";
+
+                let color = document.createElement("input");
+                color.type = "color";
+                color.addEventListener("input", () => {
+                    groupColor[groupName] = color.value;
+                    addColor();
+                });
+
+                let alpha = document.createElement("input");
+                alpha.type = "range";
+                alpha.value = 100;
+                alpha.min = 0;
+                alpha.max = 255;
+                alpha.addEventListener("input", ev => {
+                    groupAlpha[groupName] = alpha.value == "" ? 100 / 255 : alpha.value / 255;
+                    addColor();
+                });
+
+                groupAlpha[groupName] = 100 / 255;
+
+                group.append(name, color, alpha);
+                document.getElementById("colors").appendChild(group);
+            }
+        }
+        function addColor() {
+            context.clearRect(0, 0, displayWidth, displayHeight);
+            context.drawImage(
+                source,
+                (displayWidth - drawWidth) / 2,
+                (displayHeight - drawHeight) / 2,
+                drawWidth,
+                drawHeight
+            );
+            const off = document.getElementById("offCvs");
+            off.width = source.width;
+            off.height = source.height;
+            const offCtx = off.getContext("2d");
+            offCtx.imageSmoothingEnabled = false;
+            offCtx.drawImage(source, 0, 0);
+            for (const groupName in groupColor) {
+                const color = (code =>
+                    code.replace("#", "").match(/.{2}/g).map(n => parseInt(n, 16))
+                )(groupColor[groupName]);
+                const alpha = groupAlpha[groupName];
+
+                for (const coord of type.groups[groupName]) {
+                    const y = coord[1];
+                    for (const bx of coord[0]) {
+                        const x = bx;
+                        offCtx.globalCompositeOperation = "overlay";
+                        offCtx.fillStyle = `rgba(0, 0, 0, ${document.getElementById("shadow").value / 255})`;
+                        for (let i = 0; i < document.getElementById("shadowMulti").value; i++) {
+                            offCtx.fillRect(x, y, 1, 1);
+                        }
+                        offCtx.globalCompositeOperation = "multiply";
+                        offCtx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha})`;
+                        offCtx.fillRect(x, y, 1, 1);
+                    }
+                }
+            }
+            context.drawImage(
+                off,
+                0, 0, off.width, off.height,
+                (displayWidth - drawWidth) / 2,
+                (displayHeight - drawHeight) / 2,
+                drawWidth,
+                drawHeight
+            );
+        }
+        document.getElementById("shadow").addEventListener("input", ev => {
+            document.getElementById("shadowV").textContent = ev.target.value;
+            addColor();
+        });
+        document.getElementById("shadowMulti").addEventListener("input", ev => {
+            document.getElementById("shadowM").textContent = ev.target.value;
+            addColor();
+        });
+        function exportPng() {
+            const off = document.getElementById("offCvs");
+            const url = off.toDataURL("image/png");
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "out.png";
+            a.click();
+        }
+    </script>
+</body>
+
+</html>
