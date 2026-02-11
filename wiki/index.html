@@ -1,0 +1,73 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, user-scalable=yes">
+    <title>Rules</title>
+    <script src="parser/rulesParser.js" type="module" defer></script>
+    <script src="index.js" type="module" defer></script>
+    <link rel="stylesheet" href="style.css">
+    </link>
+</head>
+
+<body>
+    <div id="cover" class="n"></div>
+    <div id="container">
+        <div id="topMenu"></div>
+        <div id="sideMenu">
+            <div id="search">
+                <div id="searchOption">
+                    <div id="realSO">Option</div>
+                    <div id="optionSelector" class="n">
+                        <div class="option">
+                            <p>Regexp</p>
+                            <div class="toggle" data-opt="regex">
+                                <div class="toggleI"></div>
+                            </div>
+                        </div>
+                        <div class="option">
+                            <p>Search contents</p>
+                            <div class="toggle" data-opt="content">
+                                <div class="toggleI"></div>
+                            </div>
+                        </div>
+                        <div class="option">
+                            <p>Search titles</p>
+                            <div class="toggle" data-opt="title">
+                                <div class="toggleI"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <input type="text" id="searchInput" placeholder="Search"></textarea>
+            </div>
+            <div id="searchResDiv">
+
+                <div id="searchRes">
+                    Found articles: <span id="nowSearched"></span><span id="searchedNumber"></span>
+                </div>
+                <div id="searchMove">
+                    <div id="arrowL">
+                        <svg id="svgL" xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 640 640"><!--!Font Awesome Free v7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2026 Fonticons, Inc.-->
+                            <path
+                                d="M98.9 114.6C91.5 130.6 98.5 149.7 114.5 157.1L467.6 320L114.6 483C98.6 490.4 91.5 509.4 99 525.5C106.5 541.6 125.4 548.5 141.5 541.1L557.5 349.1C568.8 343.9 576.1 332.5 576.1 320C576.1 307.5 568.8 296.2 557.5 290.9L141.4 99C125.4 91.6 106.3 98.6 98.9 114.6z" />
+                        </svg>
+                    </div>
+                    <div id="arrowR">
+                        <svg id="svgR" xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 640 640"><!--!Font Awesome Free v7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2026 Fonticons, Inc.-->
+                            <path
+                                d="M98.9 114.6C91.5 130.6 98.5 149.7 114.5 157.1L467.6 320L114.6 483C98.6 490.4 91.5 509.4 99 525.5C106.5 541.6 125.4 548.5 141.5 541.1L557.5 349.1C568.8 343.9 576.1 332.5 576.1 320C576.1 307.5 568.8 296.2 557.5 290.9L141.4 99C125.4 91.6 106.3 98.6 98.9 114.6z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            <div id="smenu"></div>
+        </div>
+        <div id="wrapper"></div>
+    </div>
+</body>
+
+</html>
