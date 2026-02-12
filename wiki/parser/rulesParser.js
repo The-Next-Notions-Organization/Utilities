@@ -3,19 +3,25 @@ import {
     parseError, flCompareSingle, splitOnce, gl
 } from "./utilities.js";
 import { tags } from "./tagdef.js";
+import { escape } from "./escapedef.js";
 /// <reference path="./typedef.js" />
 
 const tokenizerRegex = new RegExp("(" +
     "(\\{[^\\{]+\\{)|" +
     "\\}\\}|" +
     "@[^@]+@|" +
+    "\\^[^\\^]+\\^|" +
+    "\\^|" +
     ";|" +
     "\\[|\\]|" +
-    "[^\\{\\};\\n@\\[\\]]+"
+    "[^\\^\\{\\};\\n@\\[\\]]+"
     + ")", "smg");
 
 function isVariableToken(value) {
-    return value.length >= 2 && value[0] === "@" && value[value.length - 1] === "@";
+    return value.length > 2 && value[0] === "@" && value[value.length - 1] === "@";
+}
+function isEscapeToken(value) {
+    return value.length > 2 && value[0] === "^" && value[value.length - 1] === "^";
 }
 
 /**
@@ -24,26 +30,30 @@ function isVariableToken(value) {
  */
 export function jsonToHtml(rulesJson) {
     const time = -performance.now();
+
     /**
      * @param {ATag[]} ast
-     * @returns {(HTMLElement|string)[]}
+     * @returns {DocumentFragment}
      */
     function parseAst(ast) {
-        const result = [];
+        const result = document.createDocumentFragment();
         for (let i = 0, l = ast.length; i < l; i++) {
             const element = ast[i];
             if (element.type === "tag") {
                 const tagInfo = tags[element.name];
-                const parsedContents = parseAst(element.ast);
-                const parsedArguments = parseAst(element.arguments);
-                result.push(tagInfo.toHtml({
+                const parsedContentsFragment = element.ast.length === 0 ? null : parseAst(element.ast);
+                const parsedArgumentsFragment = element.arguments.length === 0 ? null : parseAst(element.arguments);
+                const parsedContents = parsedContentsFragment ? Array.from(parsedContentsFragment.childNodes) : [];
+                const parsedArguments = parsedArgumentsFragment ? Array.from(parsedArgumentsFragment.childNodes) : [];
+                result.appendChild(tagInfo.toHtml({
                     tagName: tagInfo.inHtml,
+                    isBlock: tagInfo.isBlock,
                     contents: parsedContents,
                     attributes: element.attributes,
                     index: element.name === "/" ? element.index : null
                 }, parsedArguments));
             } else {
-                result.push(element.content);
+                result.append(element.content);
             }
         }
         return result;
@@ -62,7 +72,6 @@ export function jsonToHtml(rulesJson) {
             const layer = layers[i];
             const { depth, below, index, name } = layer;
             const res = document.createElement("div");
-            const elem = document.createElement("div");
 
             const nameElem = document.createElement("div");
             nameElem.classList.add("nameElem");
@@ -81,9 +90,12 @@ export function jsonToHtml(rulesJson) {
             res.style.marginLeft = (depth > 1 ? CONFIG.leftIndent.base : 0) + CONFIG.leftIndent.unit;
             res.id = "p" + index;
             res.classList.add("layerElem");
-            elem.classList.add("below");
-            exploreLayers(below, elem);
-            res.appendChild(elem);
+            if (below.length !== 0) {
+                const elem = document.createElement("div");
+                elem.classList.add("below");
+                exploreLayers(below, elem);
+                res.appendChild(elem);
+            }
             into.appendChild(res);
         }
     }
@@ -116,7 +128,7 @@ export function jsonToHtml(rulesJson) {
     result.html.append(document.createComment("2nd parse have taken " + secondParseTime + " ms"));
     result.allTime = rulesJson.time + secondParseTime;
     const parsed = parseAst(rulesJson.ast);
-    result.html.append(...parsed);
+    result.html.appendChild(parsed);
     return result;
 }
 
@@ -165,6 +177,7 @@ export function parseToJson(rules) {
     const uncloseds = [];
     const unclosedLayers = [];
     const elementArgumentStack = [];
+    const argumentDepthMarkers = new Map();
     let depth = 0;
 
     const tokens = tokenize(rule);
@@ -180,10 +193,27 @@ export function parseToJson(rules) {
     };
     dev.log(tokens);
 
+    function incrementDepthMarker(markerDepth) {
+        argumentDepthMarkers.set(markerDepth, (argumentDepthMarkers.get(markerDepth) || 0) + 1);
+    }
+
+    function decrementDepthMarker(markerDepth) {
+        const current = argumentDepthMarkers.get(markerDepth) || 0;
+        if (current <= 1) {
+            argumentDepthMarkers.delete(markerDepth);
+            return;
+        }
+        argumentDepthMarkers.set(markerDepth, current - 1);
+    }
+
     for (let index = 0, tokenLength = tokens.length; index < tokenLength; index++) {
-        const token = tokens[index];
+        const token = isEscapeToken(tokens[index]) ? escape(tokens[index]) : tokens[index];
+        if (token === "^") {
+            throw parseError("Escape token is malformed. Use complete form like ^co^.");
+        }
         if (token === "[") {
             elementArgumentStack.push(depth);
+            incrementDepthMarker(depth);
             dev.log("[ started");
         }
         else if (flCompareSingle(token, "{", "{")) {
@@ -221,7 +251,7 @@ export function parseToJson(rules) {
                         const variable = definedVariables.get(varName);
                         if (!variable) {
                             if (varName !== "depth") {
-                                throw parseError("There is no variable named \"" + varName + "\". If your purpose of writing @ was not to express a variable, you can write &at; instead.");
+                                throw parseError("There is no variable named \"" + varName + "\". If your purpose of writing @ was not to express a variable, you can write &at. instead.");
                             }
                             tag.attributes[attrName] = depth;
                         } else {
@@ -229,7 +259,7 @@ export function parseToJson(rules) {
                         }
                         continue;
                     }
-                    tag.attributes[attrName] = rightValue;
+                    tag.attributes[attrName] = escape(rightValue);
                 }
             }
             if (CONFIG.attr.indent.toAll.enable && CONFIG.attr.indent.toAll.override) {
@@ -253,17 +283,14 @@ export function parseToJson(rules) {
             if (lastTag === null) throw parseError("A bracket that isn't even started was closed.");
             const nextToken = tokens[index + 1];
             if (lastTag.argumentsLength !== 0) {
-                let hasDepthMarker = false;
-                for (let i = elementArgumentStack.length - 1; i >= 0; i--) {
-                    if (elementArgumentStack[i] === depth - 1) {
-                        hasDepthMarker = true;
-                        break;
-                    }
-                }
+                const hasDepthMarker = (argumentDepthMarkers.get(depth - 1) || 0) > 0;
                 if (hasDepthMarker) {
                     while (elementArgumentStack.length !== 0) {
                         const argument = elementArgumentStack.pop();
-                        if (argument === depth - 1) break;
+                        if (argument === depth - 1) {
+                            decrementDepthMarker(depth - 1);
+                            break;
+                        }
                         if (!lastTag.selector(argument[1])) {
                             console.error(lastTag);
                             throw parseError("Selector returned false in the above tag");
@@ -400,6 +427,9 @@ export function parseToJson(rules) {
         const { regex, title, content } = option;
         const useTitle = !!title;
         const useContent = !!content;
+        if (!useTitle && !useContent) {
+            return [];
+        }
         const results = [];
         for (let i = 0, l = searchIndex.length; i < l; i++) {
             const element = searchIndex[i];
@@ -429,15 +459,17 @@ export function parseToJson(rules) {
 
     function resolveVariableTypes(type, value) {
         switch (type) {
-            case "r": {
-                const result = {};
-                result.text = value;
-                result.tokens = tokenize(value);
-                return result;
-            }
+            case "r":
+                return {
+                    text: value,
+                    tokens: tokenize(value)
+                };
             case "n": {
                 if (isNaN(value)) throw new TypeError("Type mismatched. The value you declared as a number turned out to be NaN. You liar!");
                 return Number(value);
+            };
+            case "s": {
+                return escape(value);
             }
         }
         return value;
