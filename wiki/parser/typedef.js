@@ -13,14 +13,16 @@
  *   inHtml: string?,
  *   args: number,
  *   selector: {(x: ATag) => boolean},
- *   toHtml: {(info: TohtmlInfo, args: *[]) => HTMLElement}
+ *   toHtml: {(info: TohtmlInfo, args: *[]) => HTMLElement},
+ *   isBlock: boolean
  * }} TagInfo
  * 
  * @typedef {{
  *   tagName: string,
  *   contents: (HTMLElement|string)[],
  *   attributes: Objecy.<string, *>,
- *   index: number?
+ *   index: number?,
+ *   isBlock: boolean
  * }} TohtmlInfo
  * 
  * @typedef {{
