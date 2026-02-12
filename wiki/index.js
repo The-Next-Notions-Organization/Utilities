@@ -56,7 +56,7 @@ console.log("R=" + JSON.stringify(corrIndexValue(times)));*/
 let searchOption = {
     regex: false,
     content: false,
-    title: false
+    title: true
 };
 
 let nowView;
@@ -66,12 +66,15 @@ let activeHighlightToken = 0;
 document.getElementById("cover").addEventListener("click", () => {
     nowView.classList.add("n");
     document.getElementById("cover").classList.add("n");
+    [...document.getElementsByClassName("ho")].forEach(ho => ho.classList.remove("ho"));
 });
 
 document.getElementById("realSO").addEventListener("click", () => {
     toggleClass(document.getElementById("cover"), "n");
     nowView = document.getElementById("optionSelector");
     nowView.classList.remove("n");
+    document.getElementById("realBG").classList.add("ho");
+    document.getElementById("realBGbeh").classList.add("ho");
 });
 
 [...document.getElementsByClassName("toggle")].forEach((e) => {
@@ -85,6 +88,9 @@ let arrowIsNow = 0;
 let lFuncNow = null;
 let rFuncNow = null;
 //let requestedWalkerFuncs = [];
+
+const colorP = "#c9f1f8";
+const colorIp = "#273436";
 
 document.getElementById("searchInput").addEventListener("keydown", (e) => {
     if (!(e.key === "Enter") || e.isComposing) {
@@ -196,21 +202,20 @@ document.getElementById("searchInput").addEventListener("keydown", (e) => {
         hitArticlesArr[0].scrollIntoView({
             behavior: "smooth"
         });
-
         if (hitArticlesArr.length === 1) {
-            document.getElementById("arrowR").style.fill = "#777";
+            document.getElementById("arrowR").style.fill = colorIp;
         } else {
-            document.getElementById("arrowR").style.fill = "#000";
+            document.getElementById("arrowR").style.fill = colorP;
         }
 
         lFuncNow = () => {
             if (arrowIsNow === 1) {
-                document.getElementById("arrowL").style.fill = "#777";
+                document.getElementById("arrowL").style.fill = colorIp;
             } else if (arrowIsNow === 0) {
                 return;
             }
 
-            document.getElementById("arrowR").style.fill = "#000";
+            document.getElementById("arrowR").style.fill = colorP;
             hitArticlesArr[--arrowIsNow].scrollIntoView({
                 behavior: "smooth"
             });
@@ -219,12 +224,12 @@ document.getElementById("searchInput").addEventListener("keydown", (e) => {
 
         rFuncNow = () => {
             if (arrowIsNow === hitArticlesArr.length - 2) {
-                document.getElementById("arrowR").style.fill = "#777";
+                document.getElementById("arrowR").style.fill = colorIp;
             } else if (arrowIsNow === hitArticlesArr.length - 1) {
                 return;
             }
 
-            document.getElementById("arrowL").style.fill = "#000";
+            document.getElementById("arrowL").style.fill = colorP;
             hitArticlesArr[++arrowIsNow].scrollIntoView({
                 behavior: "smooth"
             });
